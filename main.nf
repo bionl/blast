@@ -24,9 +24,6 @@ process RUN_BLAST {
 
     script:
     """
-    blastn -query ${query_file} \
-           -db ${db_files} \
-           -out results.out \
-           -outfmt 6
+    blastn -query ${query_file} -db ${db_files} -out results.out -outfmt 6
     """
 }
