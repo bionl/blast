@@ -27,6 +27,11 @@ process RUN_BLAST {
     script:
     """
     ulimit -n 65536
-    blastn -query ${query_file} -db ${db_files}/${db_name} -out results.txt -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore" -num_threads 4
+    blastn \
+        -query ${query_file} \
+        -db ${db_files}/${db_name} \
+        -out results.txt \
+        -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore" \
+        -num_threads 4
     """
 }
