@@ -4,7 +4,7 @@ nextflow.enable.dsl = 2
 
 workflow {
     def input_fasta = file(params.input)
-    def blast_db = file(params.db)
+    def blast_db = file('gs://bionfile-test/reference_db')
 
     RUN_BLAST(input_fasta, blast_db)
         | view {
@@ -20,10 +20,10 @@ process RUN_BLAST {
     path db_files
 
     output:
-    path "*.out"
+    path "*.txt"
 
     script:
     """
-    blastn -query ${query_file} -db ${db_files} -out results.out -outfmt 6
+    blastn -query ${query_file} -db ${db_files} -out results.txt -outfmt "6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore" -num_threads 4
     """
 }
