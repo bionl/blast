@@ -21,7 +21,7 @@ process RUN_BLAST {
     val db_name
 
     output:
-    path "*.txt"
+    path "${params.outdir}/*.txt"
 
     script:
     """
