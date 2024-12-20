@@ -14,6 +14,7 @@ workflow {
 
 process RUN_BLAST {
     container "ncbi/blast:latest"
+    publishDir params.outdir, mode: 'copy'
 
     input:
     path query_file
@@ -21,7 +22,7 @@ process RUN_BLAST {
     val db_name
 
     output:
-    path "${params.outdir}/*.txt"
+    path "*.txt"
 
     script:
     """
