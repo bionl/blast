@@ -1,0 +1,19 @@
+Jan-20 18:42:01.406 [main] DEBUG nextflow.cli.Launcher - $> nextflow -c nf.config run -w 'gs://0857bf4e-4ac8-44a8-b198-2453a90842c7/pablo' /Users/yahiasalem/Personal/ProgrammingProjects/Bionl/bioinfile/main.nf --input /Users/yahiasalem/Personal/ProgrammingProjects/Bionl/bioinfile/blast_samplesheet.csv --outdir ./outdir
+Jan-20 18:42:01.478 [main] DEBUG nextflow.cli.CmdRun - N E X T F L O W  ~  version 24.10.2
+Jan-20 18:42:01.506 [main] DEBUG nextflow.plugin.PluginsFacade - Setting up plugin manager > mode=prod; embedded=false; plugins-dir=/Users/yahiasalem/.nextflow/plugins; core-plugins: nf-amazon@2.9.2,nf-azure@1.10.2,nf-cloudcache@0.4.2,nf-codecommit@0.2.2,nf-console@1.1.4,nf-google@1.15.2,nf-tower@1.9.3,nf-wave@1.7.4
+Jan-20 18:42:01.537 [main] INFO  o.pf4j.DefaultPluginStatusProvider - Enabled plugins: []
+Jan-20 18:42:01.538 [main] INFO  o.pf4j.DefaultPluginStatusProvider - Disabled plugins: []
+Jan-20 18:42:01.542 [main] INFO  org.pf4j.DefaultPluginManager - PF4J version 3.12.0 in 'deployment' mode
+Jan-20 18:42:01.565 [main] INFO  org.pf4j.AbstractPluginManager - No plugins
+Jan-20 18:42:01.603 [main] DEBUG nextflow.config.ConfigBuilder - Found config local: /Users/yahiasalem/Personal/ProgrammingProjects/Bionl/bioinfile/nextflow.config
+Jan-20 18:42:01.618 [main] DEBUG nextflow.cli.Launcher - Operation aborted
+nextflow.exception.AbortOperationException: The specified configuration file does not exist: /Users/yahiasalem/Personal/ProgrammingProjects/Bionl/bioinfile/nf.config -- check the name or choose another file
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at nextflow.config.ConfigBuilder.validateConfigFiles(ConfigBuilder.groovy:249)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at nextflow.config.ConfigBuilder.buildConfigObject(ConfigBuilder.groovy:817)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at nextflow.config.ConfigBuilder.build(ConfigBuilder.groovy:831)
+	at nextflow.cli.CmdRun.run(CmdRun.groovy:332)
+	at nextflow.cli.Launcher.run(Launcher.groovy:503)
+	at nextflow.cli.Launcher.main(Launcher.groovy:658)

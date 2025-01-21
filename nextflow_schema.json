@@ -20,6 +20,9 @@
           "fa_icon": "fas fa-file",
           "type": "string",
           "format": "file-path",
+          "schema": "assets/schema_input.json",
+          "mimetype": "text/csv",
+          "pattern": "^\\S+\\.csv$",
           "exists": true
         },
         "outdir": {
@@ -52,6 +55,36 @@
           "fa_icon": "fas fa-cloud-download-alt",
           "default": "reference_db",
           "hidden": true
+        },
+        "taxonomy": {
+          "description": "Path to taxonomy file.",
+          "fa_icon": "fas fa-file",
+          "type": "string",
+          "format": "file-path",
+          "exists": true,
+          "hidden": true
+        },
+        "script": {
+          "description": "Path to python script file.",
+          "fa_icon": "fas fa-file",
+          "type": "string",
+          "format": "file-path",
+          "exists": true,
+          "hidden": true
+        },
+        "blast_results_dir": {
+          "description": "The directory where BLAST result files will be stored.",
+          "fa_icon": "fas fa-folder-open",
+          "type": "string",
+          "default": "blast_results",
+          "exists": true
+        },
+        "decision_output_dir": {
+          "description": "The directory where decision-making outputs derived from BLAST results will be saved.",
+          "fa_icon": "fas fa-folder-open",
+          "type": "string",
+          "default": "blastdm_outputs",
+          "exists": true
         }
       }
     }
