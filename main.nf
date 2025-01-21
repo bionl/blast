@@ -2,66 +2,61 @@
 
 nextflow.enable.dsl = 2
 
-params.input = "samples.tsv"
-params.taxonomy = "taxonomy.tsv"
-params.script = "blastdm.py"
-params.db_name_prefix = "reference_db"
-params.db_title = "Demo BLAST DB"
-params.blast_results_dir = "blast_results"
-params.decision_output_dir = "blastdm_outputs"
-params.final_merged_features = "merged_features.txt"
-params.read_type = "PARTIAL"
-
 workflow {
     Channel
         .fromPath(params.input)
-        .splitCsv(header: true, sep: '\t')
+        .splitCsv(header: true)
+        .map({ v -> v.fasta_path })
+        .countFasta()
+        .view()
+
+    Channel
+        .fromPath(params.input)
+        .splitCsv(header: true)
         .set { sample_info }
 
-    sample_info | COUNT_READS
+    sample_info | (COUNT_READS & FILTER_QUALITY)
 
-    sample_info
-        | convertFastqToFasta
-        | filterQuality
-        | MAKE_BLAST_DB
-        | RUN_BLAST
-        | mapTaxonomies
-        | decisionMaking
-        | mergeFeatures
+    RUN_BLAST(FILTER_QUALITY.out, params.db_files)
+
+    MAP_TAXONOMIES(RUN_BLAST.out, params.taxonomy)
+
+    DECISION_MAKING(MAP_TAXONOMIES.out, params.script).collect() | MERGE_FEATURES
 }
-// Set to "FULL" for full-length sequences
 
 
 // 1. (Python)
 process COUNT_READS {
+    container "pegi3s/biopython"
+    publishDir "${params.outdir}/counts", mode: 'copy'
+
     input:
-    tuple val(sample_name), path(inputFile)
+    tuple val(sample_name), path(fasta_path)
 
     output:
-    tuple val(sample_name), val("read_counts_*.txt")
+    tuple val(sample_name), path("*.txt")
 
     script:
     """
-    python -c "
+    python3 -c "
     from Bio import SeqIO
-    format_type = 'fastq' if '${inputFile}'.endswith('.fastq') else 'fasta'
-    count = sum(1 for _ in SeqIO.parse('${inputFile}', format_type))
-    print(f'{sample_name}\\t{count}')
-    "
-    > read_counts_${sample_name}.txt
+    format_type = 'fastq' if '${fasta_path}'.endswith('.fastq') else 'fasta'
+    count = sum(1 for _ in SeqIO.parse('${fasta_path}', format_type))
+    print(count)
+    " \
+    > ${sample_name}.txt
     """
 }
 
 // 2. (seqtk)
-process convertFastqToFasta {
+process CONVERT_FASTQ_TO_FASTA {
+    container "staphb/seqtk"
+
     input:
     tuple val(sample_name), path(inputFile)
 
     output:
-    tuple val(sample_name), path("converted_${sample_name}.fasta")
-
-    when:
-    inputFile.endsWith('.fastq')
+    tuple val(sample_name), path("converted_*.fasta")
 
     script:
     """
@@ -70,16 +65,18 @@ process convertFastqToFasta {
 }
 
 // 3. (Python)
-process filterQuality {
+process FILTER_QUALITY {
+    container "pegi3s/biopython"
+
     input:
     tuple val(sample_name), path(fastaFile)
 
     output:
-    tuple val(sample_name), path("filtered_${sample_name}.fasta")
+    tuple val(sample_name), path("filtered_*.fasta")
 
     script:
     """
-    python -c "
+    python3 -c "
     from Bio import SeqIO
     import numpy as np
 
@@ -91,9 +88,10 @@ process filterQuality {
 
     # Define threshold dynamically
     median_length = np.median(lengths)
-    threshold = 1200 if median_length >= 1200 else 150  # FULL if median length >= 1200, else PARTIAL
+    threshold = 1200 if median_length >= 1200 else 150
+    mode = 'FULL' if threshold == 1200 else 'PARTIAL'
 
-    print(f'Detected mode: {"FULL" if threshold == 1200 else "PARTIAL"} (Threshold: {threshold} bp)')
+    print(f'Detected mode: {mode} (Threshold: {threshold} bp)')
 
     # Filter sequences based on detected mode
     with open(input_file, 'r') as infile, open(output_file, 'w') as outfile:
@@ -107,53 +105,37 @@ process filterQuality {
 }
 
 // 4. (Blast)
-process MAKE_BLAST_DB {
-    container "ncbi/blast:latest"
-
-    input:
-    tuple val(sample_name), path(filteredFasta)
-
-    output:
-    tuple val(sample_name), path("${params.db_name_prefix}_${sample_name}.nhr")
-
-    script:
-    """
-    makeblastdb \
-        -in ${filteredFasta} \
-        -dbtype nucl \
-        -out ${params.db_name_prefix}_${sample_name} \
-        -parse_seqids \
-        -title "${params.db_title}_${sample_name}"
-    """
-}
-
-// 5. (Blast)
 process RUN_BLAST {
     container "ncbi/blast:latest"
+    publishDir "${params.outdir}/${params.blast_results_dir}", mode: 'copy'
 
     input:
     tuple val(sample_name), path(filteredFasta)
+    path db_files
 
     output:
-    tuple val(sample_name), path("${params.blast_results_dir}/blast_results_${sample_name}.txt")
+    tuple val(sample_name), path("*.txt")
 
     script:
     """
+    ulimit -n 65536
     blastn \
         -task megablast \
         -evalue 0.01 \
         -query ${filteredFasta} \
-        -db ${params.db_name_prefix}_${sample_name} \
-        -out ${params.blast_results_dir}/blast_results_${sample_name}.txt \
+        -db ${db_files}/${params.db_name} \
+        -out blast_results_${sample_name}.txt \
         -max_target_seqs 10 \
         -max_hsps 1 \
-        -outfmt "6 qseqid sseqid qlen evalue pident length qstart qend sstart send"
+        -outfmt "6 qseqid sseqid qlen evalue pident length qstart qend sstart send" \
         -num_threads 4
     """
 }
 
-// 6. (Python)
-process mapTaxonomies {
+// 5. (Python)
+process MAP_TAXONOMIES {
+    container "biocontainers/pandas:1.5.1_cv1"
+
     input:
     tuple val(sample_name), path(blastResults)
     path taxonomyFile
@@ -164,49 +146,55 @@ process mapTaxonomies {
     script:
     """
     python -c "
-    import pandas as pd;
-    print('Loading BLAST results for ${sample_name}...');
-    blast_df = pd.read_csv('${blastResults}', sep='\t', header=None, names=['qseqid', 'sseqid', 'qlen', 'evalue', 'pident', 'length', 'qstart', 'qend', 'sstart', 'send']);
+    import pandas as pd
+    print('Loading BLAST results for ${sample_name}...')
+    blast_df = pd.read_csv('${blastResults}', sep='\t', header=None, names=['qseqid', 'sseqid', 'qlen', 'evalue', 'pident', 'length', 'qstart', 'qend', 'sstart', 'send'])
     
-    print('Calculating query coverage...');
-    blast_df['query_coverage (%)'] = (blast_df['length'] / blast_df['qlen']) * 100;
+    print('Calculating query coverage...')
+    blast_df['query_coverage (%)'] = (blast_df['length'] / blast_df['qlen']) * 100
     
-    print('Loading taxonomy file...');
-    taxonomy_df = pd.read_csv('${taxonomyFile}', sep='\t', names=['sseqid', 'taxonomy']);
+    print('Loading taxonomy file...')
+    taxonomy_df = pd.read_csv('${taxonomyFile}', sep='\t', names=['sseqid', 'taxonomy'])
     
-    print('Merging BLAST results with taxonomy...');
-    merged_df = pd.merge(blast_df, taxonomy_df, on='sseqid', how='left');
+    print('Merging BLAST results with taxonomy...')
+    merged_df = pd.merge(blast_df, taxonomy_df, on='sseqid', how='left')
     
-    merged_df.to_csv('results_with_taxonomy_${sample_name}.txt', sep='\t', index=False);
-    print(f'Taxonomy-mapped results saved for ${sample_name}');
+    merged_df.to_csv('results_with_taxonomy_${sample_name}.txt', sep='\t', index=False)
+    print(f'Taxonomy-mapped results saved for ${sample_name}')
     "
     """
 }
 
-// 7. (Python) -- custom container?
-process decisionMaking {
+// 6. (Python) -- custom container?
+process DECISION_MAKING {
+    container "biocontainers/pandas:1.5.1_cv1"
+    publishDir "${params.outdir}/${params.decision_output_dir}", mode: 'copy'
+
     input:
     tuple val(sample_name), path(mappedResults)
     path scriptFile
 
     output:
-    tuple val(sample_name), path("${params.decision_output_dir}/${sample_name}/features.txt")
+    path("${sample_name}/features.txt")
 
     script:
     """
-    mkdir -p ${params.decision_output_dir}/${sample_name}
-    python ${scriptFile} ${mappedResults} --output ${params.decision_output_dir}/${sample_name}
+    mkdir -p ${sample_name}
+    cd ${sample_name}
+    python ../${scriptFile} ../${mappedResults}
     """
 }
 
-// 8. (Python)
-process mergeFeatures {
+// 7. (Python)
+process MERGE_FEATURES {
+    container "biocontainers/pandas:1.5.1_cv1"
+    publishDir "${params.outdir}", mode: 'copy'
+
     input:
-    // path(featureFiles) from "${params.decision_output_dir}/*/features.txt"
-    path featureFiles
+    path ("**/features.txt")
 
     output:
-    path params.final_merged_features
+    path("merged_features.txt")
 
     script:
     """
@@ -216,7 +204,7 @@ process mergeFeatures {
     import os
 
     # Collect all features.txt files
-    feature_files = glob.glob('${params.decision_output_dir}/*/features.txt')
+    feature_files = glob.glob('**/features.txt')
 
     # Initialize empty list to store dataframes
     dfs = []
@@ -235,9 +223,9 @@ process mergeFeatures {
     merged_df = pd.concat(dfs, axis=1, sort=False).fillna(0).astype(int)
 
     # Save as TSV without unintended extra columns
-    merged_df.to_csv('${params.final_merged_features}', sep='\\t')
+    merged_df.to_csv('merged_features.txt', sep='\\t')
 
-    print(f'Merged features table saved as ${params.final_merged_features}')
+    print(f'Merged features table saved as merged_features.txt')
     "
     """
 }

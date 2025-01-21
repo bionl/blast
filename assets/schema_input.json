@@ -1,0 +1,29 @@
+{
+    "title": "bionl/blast pipeline - params.input schema",
+    "description": "Schema for the file provided with params.input",
+    "type": "array",
+    "items": {
+        "type": "object",
+        "properties": {
+            "sample": {
+                "type": "string",
+                "pattern": "^\\S+$",
+                "errorMessage": "Sample name must be provided and cannot contain spaces",
+                "meta": [
+                    "id"
+                ]
+            },
+            "fasta": {
+                "type": "string",
+                "format": "file-path",
+                "exists": true,
+                "pattern": "^\\S+\\.f(ast)?(a|q)$",
+                "errorMessage": "The file must be provided in FASTA or FASTQ format, cannot contain spaces, and must have the extension '.fasta', '.fa', '.fastq', or '.fq' (compression is not allowed)."
+            }
+        },
+        "required": [
+            "sample",
+            "fasta"
+        ]
+    }
+}
