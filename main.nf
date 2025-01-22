@@ -175,7 +175,7 @@ process DECISION_MAKING {
     path scriptFile
 
     output:
-    path("${sample_name}/features.txt")
+    path("${sample_name}/*.txt")
 
     script:
     """
