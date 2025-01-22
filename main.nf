@@ -221,7 +221,7 @@ process MERGE_FEATURES {
         # Read file with first row as header
         df = pd.read_csv(file, sep='\\t', header=0)
 
-        df = df.set_index('Taxon ID')  # Set taxonomy as index
+        df = df.set_index('Taxon ID') # Set taxonomy as index
         dfs.append(df)
 
     # Merge all dataframes by Taxon ID (outer join to keep all taxonomies)
