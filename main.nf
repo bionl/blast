@@ -24,7 +24,9 @@ workflow {
 
     MAP_TAXONOMIES(RUN_BLAST.out, params.taxonomy)
 
-    DECISION_MAKING(MAP_TAXONOMIES.out, params.script).collect() | MERGE_FEATURES
+    def decisionMakingOutput = DECISION_MAKING(MAP_TAXONOMIES.out, params.script).collect()
+
+    MERGE_FEATURES(decisionMakingOutput)
 }
 
 
@@ -194,7 +196,7 @@ process MERGE_FEATURES {
     publishDir "${params.outdir}", mode: 'copy'
 
     input:
-    path "**/features.txt"
+    path x, name: '*/*'
 
     output:
     path "merged_features.txt"
@@ -218,7 +220,7 @@ process MERGE_FEATURES {
 
         # Read file with first row as header
         df = pd.read_csv(file, sep='\\t', header=0)
-        
+
         df = df.set_index('Taxon ID')  # Set taxonomy as index
         dfs.append(df)
 
