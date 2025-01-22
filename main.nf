@@ -6,21 +6,19 @@ workflow {
     Channel
         .fromPath(params.input)
         .splitCsv(header: true)
-        .set { sample_info }
+        .set { all_samples }
 
-    sample_info
+    all_samples
         .filter { it.fasta.endsWith('.fastq') }
         .set { fastq_samples }
 
-    sample_info
+    all_samples
         .filter { it.fasta.endsWith('.fasta') }
         .set { fasta_samples }
 
     CONVERT_FASTQ_TO_FASTA(fastq_samples)
 
-    fasta_samples.mix(CONVERT_FASTQ_TO_FASTA.out).set { all_fasta_files }
-
-    all_fasta_files | (COUNT_READS & FILTER_QUALITY)
+    fasta_samples.mix(CONVERT_FASTQ_TO_FASTA.out) | (COUNT_READS & FILTER_QUALITY)
 
     RUN_BLAST(FILTER_QUALITY.out, params.db_files)
 
