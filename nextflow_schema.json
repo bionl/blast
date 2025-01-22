@@ -46,14 +46,14 @@
           "format": "directory-path",
           "description": "The directory containing blastdb files",
           "fa_icon": "fas fa-folder-open",
-          "default": "gs://bionfile-test/reference_db",
+          "default": "gs://bionfile-test/reference_db_v2",
           "hidden": true
         },
         "db_name": {
           "type": "string",
           "description": "Blast db name used in makeblastdb command",
           "fa_icon": "fas fa-cloud-download-alt",
-          "default": "reference_db",
+          "default": "BIOINFILEDBTEST1",
           "hidden": true
         },
         "taxonomy": {
