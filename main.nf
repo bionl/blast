@@ -6,27 +6,21 @@ workflow {
     Channel
         .fromPath(params.input)
         .splitCsv(header: true)
+        .branch {
+            fastq: it.fasta.endsWith('.fastq')
+            fasta: it.fasta.endsWith('.fasta')
+        }
         .set { all_samples }
 
-    all_samples
-        .filter { it.fasta.endsWith('.fastq') }
-        .set { fastq_samples }
+    all_samples.fastq | CONVERT_FASTQ_TO_FASTA
 
-    all_samples
-        .filter { it.fasta.endsWith('.fasta') }
-        .set { fasta_samples }
-
-    CONVERT_FASTQ_TO_FASTA(fastq_samples)
-
-    fasta_samples.mix(CONVERT_FASTQ_TO_FASTA.out) | (COUNT_READS & FILTER_QUALITY)
+    all_samples.fasta.mix(CONVERT_FASTQ_TO_FASTA.out) | (COUNT_READS & FILTER_QUALITY)
 
     RUN_BLAST(FILTER_QUALITY.out, params.db_files)
 
     MAP_TAXONOMIES(RUN_BLAST.out, params.taxonomy)
 
-    def decisionMakingOutput = DECISION_MAKING(MAP_TAXONOMIES.out, params.script).collect()
-
-    MERGE_FEATURES(decisionMakingOutput)
+    DECISION_MAKING(MAP_TAXONOMIES.out, params.script).collect() | MERGE_FEATURES
 }
 
 
@@ -112,7 +106,6 @@ process FILTER_QUALITY {
 // 4. (Blast)
 process RUN_BLAST {
     container "ncbi/blast:latest"
-    publishDir "${params.outdir}/${params.blast_results_dir}", mode: 'copy'
 
     input:
     tuple val(sample_name), path(filteredFasta)
@@ -170,10 +163,10 @@ process MAP_TAXONOMIES {
     """
 }
 
-// 6. (Python) -- custom container?
+// 6. (Python) 
 process DECISION_MAKING {
     container "biocontainers/pandas:1.5.1_cv1"
-    publishDir "${params.outdir}/${params.decision_output_dir}", mode: 'copy'
+    publishDir params.outdir, mode: 'copy'
 
     input:
     tuple val(sample_name), path(mappedResults)
@@ -186,14 +179,14 @@ process DECISION_MAKING {
     """
     mkdir -p ${sample_name}
     cd ${sample_name}
-    python ../${scriptFile} ../${mappedResults}
+    python ../${scriptFile} ../${mappedResults} ${sample_name}
     """
 }
 
 // 7. (Python)
 process MERGE_FEATURES {
     container "biocontainers/pandas:1.5.1_cv1"
-    publishDir "${params.outdir}", mode: 'copy'
+    publishDir params.outdir, mode: 'copy'
 
     input:
     path x, name: '*/*'

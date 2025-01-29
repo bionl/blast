@@ -71,20 +71,6 @@
           "format": "file-path",
           "exists": true,
           "hidden": true
-        },
-        "blast_results_dir": {
-          "description": "The directory where BLAST result files will be stored.",
-          "fa_icon": "fas fa-folder-open",
-          "type": "string",
-          "default": "blast_results",
-          "exists": true
-        },
-        "decision_output_dir": {
-          "description": "The directory where decision-making outputs derived from BLAST results will be saved.",
-          "fa_icon": "fas fa-folder-open",
-          "type": "string",
-          "default": "blastdm_outputs",
-          "exists": true
         }
       }
     }
